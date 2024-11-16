@@ -1,6 +1,8 @@
 import time
 import random
 import math
+from memory_profiler import memory_usage
+import pandas as pd
 
 def generate_random_list(n):
     return [random.randint(1, n) for _ in range(n)]
@@ -23,6 +25,16 @@ def generate_nearly_sorted_list(n, num_swaps=10):
         S[i], S[j] = S[j], S[i]
     return S
 
+# ------------------------------------------------------------
+
+def measure_mergesort_memory(func, *args):
+    def wrapped_function(*wrapped_args):
+        func(*wrapped_args)
+    return memory_usage((wrapped_function, args), interval=0.01)
+
+# ------------------------------------------------------------
+
+# Chapter 2.2 Mergesort
 def mergesort1(n, S):
     if n > 1:
         h = n // 2
@@ -71,6 +83,9 @@ def merge1(h, m, U, V, S):
             S[k] = U[l]
             k += 1
 
+# ------------------------------------------------------------
+
+# Chapter 2.2 Mergesort
 def mergesort2(low, high, S):
     if low < high:
         mid = (low + high) // 2
@@ -169,6 +184,7 @@ def merge3(low, mid, high, S):
         k += 1
 
 # ------------------------------------------------------------
+# Chapter 7.4: Mergesort Revisited
 # Linked Version of Mergesort
 class Node:
     def __init__(self, key=None, link=None):
@@ -225,10 +241,8 @@ def merge4(list1, list2):
 # ------------------------------------------------------------
 # Function to run the test multiple times and calculate the average time
 def run_tests(num_tests, n, data_type):
-    mergesort1_times = []
-    mergesort2_times = []
-    mergesort3_times = []
-    mergesort4_times = []
+
+    results = []
 
     for _ in range(num_tests):
         # Generate the correct type of list based on data_type
@@ -241,41 +255,45 @@ def run_tests(num_tests, n, data_type):
         elif data_type == 'nearly_sorted':
             S = generate_nearly_sorted_list(n)
 
-        # Test the mergesort1 function
+        # Test mergesort1
         start_time = time.time()
         mergesort1(len(S), S)
-        mergesort1_times.append(time.time() - start_time)
+        time_taken = time.time() - start_time
+        memory_used = max(measure_mergesort_memory(mergesort1, len(S), S))
+        results.append(["mergesort1", data_type, n, time_taken, memory_used])
 
-        # Test the mergesort2 function
+        # Test mergesort2
         start_time = time.time()
         mergesort2(0, len(S) - 1, S)
-        mergesort2_times.append(time.time() - start_time)
+        time_taken = time.time() - start_time
+        memory_used = max(measure_mergesort_memory(mergesort2, 0, len(S) - 1, S))
+        results.append(["mergesort2", data_type, n, time_taken, memory_used])
 
-        # Test the mergesort3 function
+        # Test mergesort3
         start_time = time.time()
         mergesort3(len(S), S)
-        mergesort3_times.append(time.time() - start_time)
+        time_taken = time.time() - start_time
+        memory_used = max(measure_mergesort_memory(mergesort3, len(S), S))
+        results.append(["mergesort3", data_type, n, time_taken, memory_used])
 
-        # Test the mergesort4 function
+        # Measure time for mergesort4
         A = [] # Convert the list to a list of Node objects. Not included in time to sort.
         for key in S:
             A.append(Node(key))
         start_time = time.time()
         mergedlist_container = [None]
         mergesort4(0, len(A) - 1, mergedlist_container, A)
-        mergesort4_times.append(time.time() - start_time)
+        time_taken = time.time() - start_time
+        memory_used = max(measure_mergesort_memory(mergesort4, 0, len(A) - 1, mergedlist_container, A))
+        results.append(["mergesort4", data_type, n, time_taken, memory_used])
 
-    # Calculate and return the average time for both mergesorts
-    avg_mergesort1_time = sum(mergesort1_times) / num_tests
-    avg_mergesort2_time = sum(mergesort2_times) / num_tests
-    avg_mergesort3_time = sum(mergesort3_times) / num_tests
-    avg_mergesort4_time = sum(mergesort4_times) / num_tests
-    return avg_mergesort1_time, avg_mergesort2_time, avg_mergesort3_time, avg_mergesort4_time
+    return results
 
 def prepare_tests():
     # Test for array sizes from 10^1 to 10^6, running 100 tests per size
     num_tests = 2  # Number of tests to run for each array size
     data_types = ['random', 'sorted', 'reversed', 'nearly_sorted']
+    results = []
 
     for x in range(1, 7):  # For array sizes 10^1 to 10^6
         n = 10**x
@@ -283,15 +301,25 @@ def prepare_tests():
 
         for data_type in data_types:
             # Run the tests and calculate average times
-            avg_mergesort1_time, avg_mergesort2_time, avg_mergesort3_time, avg_mergesort4_time = run_tests(num_tests, n, data_type)
+            test_results = run_tests(num_tests, n, data_type)
+            results.extend(test_results)
+            print(f"Completed: Data Type={data_type}, Input Size={n}")
+                
+        # Convert results to a DataFrame
+        df = pd.DataFrame(results, columns=["Algorithm", "Data Type", "Input Size", "Time (s)", "Memory (MB)"])
 
-            # Output the results for each data type
-            print(f"Data Type: {data_type}")
-            print(f"mergesort1 average time: {avg_mergesort1_time:.6f} seconds")
-            print(f"mergesort2 average time: {avg_mergesort2_time:.6f} seconds")
-            print(f"mergesort3 average time: {avg_mergesort3_time:.6f} seconds")
-            print(f"mergesort4 average time: {avg_mergesort4_time:.6f} seconds")
-            print("-" * 50)  # Separator for clarity
+        # Calculate averages
+        avg_results = df.groupby(["Algorithm", "Data Type", "Input Size"])[["Time (s)", "Memory (MB)"]].mean().reset_index()
+
+        # Save raw data and averages with unique filenames
+        raw_data_file = f"merge_sort_raw_data_{x}.xlsx"
+        avg_data_file = f"merge_sort_averages_{x}.xlsx"
+        
+        with pd.ExcelWriter(raw_data_file) as writer:
+            df.to_excel(writer, sheet_name="Raw Data", index=False)
+
+        avg_results.to_excel(avg_data_file, index=False)
+        print(f"Results for 10^{x} saved to {raw_data_file} and {avg_data_file}")
 
 # Convert linked list to a Python list (array)
 def linked_list_to_array(linked_list):
@@ -304,6 +332,7 @@ def linked_list_to_array(linked_list):
 
 def test_mergesort():
     S = [10, 3, 7, 4, 8, 5, 2, 9, 6, 1]
+    print ("Original:", S)
 
     # Test the mergesort1 function
     print ("Mergesort 1:", mergesort1(len(S), S))
@@ -315,7 +344,6 @@ def test_mergesort():
     print ("Mergesort 3:", mergesort3(len(S), S))
 
     # Test the mergesort4 function
-    # S = [Node(10), Node(3), Node(7), Node(4), Node(8), Node(5), Node(2), Node(9), Node(6), Node(1)]
     A = [] # Convert the list to a list of Node objects. Not included in time to sort.
     for key in S:
         A.append(Node(key))
