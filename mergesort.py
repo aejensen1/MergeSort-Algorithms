@@ -291,7 +291,7 @@ def run_tests(num_tests, n, data_type):
 
 def prepare_tests():
     # Test for array sizes from 10^1 to 10^6, running 100 tests per size
-    num_tests = 2  # Number of tests to run for each array size
+    num_tests = 100  # Number of tests to run for each array size
     data_types = ['random', 'sorted', 'reversed', 'nearly_sorted']
     results = []
 
@@ -331,29 +331,46 @@ def linked_list_to_array(linked_list):
     return array
 
 def test_mergesort():
-    S = [10, 3, 7, 4, 8, 5, 2, 9, 6, 1]
-    print ("Original:", S)
+    for x in range(1, 7):  # For array sizes 10^1 to 10^6
+        n = 10**x
+        S = generate_random_list(n)
 
-    # Test the mergesort1 function
-    print ("Mergesort 1:", mergesort1(len(S), S))
+        print (f"\nOriginal (First 100 of {n}):", S[:100])
+        
+        # Test the mergesort1 function
+        mergesort1val = mergesort1(len(S), S)
+        print (f"Mergesort 1 (First 100 of {n}):", (mergesort1val[:100]))
 
-    # Test the mergesort2 function
-    print ("Mergesort 2:", mergesort2(0, len(S) - 1, S))
+        # Test the mergesort2 function
+        mergesort2val = mergesort2(0, len(S) - 1, S)
+        print (f"Mergesort 2 (First 100 of {n}):", (mergesort2val[:100]))
 
-    # Test the mergesort3 function
-    print ("Mergesort 3:", mergesort3(len(S), S))
+        # Test the mergesort3 function
+        mergesort3val = mergesort3(len(S), S)
+        print (f"Mergesort 3 (First 100 of {n}):", mergesort3val[:100])
 
-    # Test the mergesort4 function
-    A = [] # Convert the list to a list of Node objects. Not included in time to sort.
-    for key in S:
-        A.append(Node(key))
-    mergedlist_container = [None]
-    mergesort4(0, len(S) - 1, mergedlist_container, A)
-    sorted_list_head = mergedlist_container[0]
-    print("Mergesort 4:", linked_list_to_array(sorted_list_head))
+        # Test the mergesort4 function
+        A = [] # Convert the list to a list of Node objects. Not included in time to sort.
+        for key in S:
+            A.append(Node(key))
+        mergedlist_container = [None]
+        mergesort4(0, len(S) - 1, mergedlist_container, A)
+        sorted_list_head = mergedlist_container[0]
+        mergesort4val = linked_list_to_array(sorted_list_head)
+        print(f"Mergesort 4 (First 100 of {n}):", mergesort4val[:100])
+
+        print (f"Mergesort 1 (Last 100 of {n}):", mergesort1val[-100:])
+        print (f"Mergesort 2 (Last 100 of {n}):", mergesort2val[-100:])
+        print (f"Mergesort 3 (Last 100 of {n}):", mergesort3val[-100:])
+        print(f"Mergesort 4 (Last 100 of {n}):", mergesort4val[-100:])
 
 
 # Test the implementation
 if __name__ == "__main__":
-    prepare_tests()
-    # test_mergesort()
+    user_input = input("Type 1 to run comprehensive report tests (hours long) or 2 to run a single test (fast): ")
+    if user_input == "1":
+        prepare_tests()
+    elif user_input == "2":
+        test_mergesort()
+    else:
+        print("Invalid input. Exiting.")
